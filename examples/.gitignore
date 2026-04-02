@@ -1,0 +1,4 @@
+document_automation/.sessions/
+document_automation/artifacts/
+document_automation/output/
+__pycache__/

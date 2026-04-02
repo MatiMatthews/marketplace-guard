@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.DS_Store
+.env
+
+# Runtime outputs
+.marketplace_guard/
+examples/.marketplace_guard/
+
+# Example outputs
+examples/document_automation/.sessions/
+examples/document_automation/artifacts/
+examples/document_automation/output/

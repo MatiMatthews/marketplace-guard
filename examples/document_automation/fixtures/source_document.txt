@@ -1,0 +1,7 @@
+VALARIS document automation fixture
+
+This sample document exists to validate a reusable workflow module.
+It includes approval requirements, validation language, and compliance notes.
+
+The goal is to prove that document download, extraction, validation, and reporting
+can run through the same typed runtime infrastructure without custom pipeline code.
