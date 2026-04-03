@@ -1,86 +1,90 @@
-# Marketplace Guard POC
+# Marketplace Guard
 
-## 1. Qué es esto
+## 1. Qué es Marketplace Guard
 
-Este repo es un POC en Python para detectar problemas de pricing en marketplaces: margen roto, promos que dejan pérdida e inconsistencias de precio entre canales. Hoy corre con datos mock, reglas claras y una API simple para mostrar alertas priorizadas y simular acciones como bloquear una publicación.
+Marketplace Guard es un POC para detectar problemas de pricing en marketplaces y volverlos accionables en una interfaz simple. Está pensado para un `ecommerce manager` que necesita ver rápido qué SKU tiene margen roto, qué diferencia de precio entre canales merece revisión y qué acción conviene tomar primero.
 
-## 2. Problema que resuelve
+El problema que resuelve es directo: en marketplace es fácil vender con pérdida sin darse cuenta. Eso puede pasar por promos agresivas, fees mal considerados, subsidios de envío o desalineación de precios entre canales. Marketplace Guard toma esos datos, detecta anomalías, las prioriza y las muestra en un cockpit operativo.
 
-En ecommerce marketplace es fácil que un SKU quede mal precificado sin que nadie lo vea a tiempo. Puede pasar por una promo agresiva, fees mal considerados, subsidio de envío, o diferencias de precio entre canales. El resultado es simple: se vende con margen roto o se genera una inconsistencia comercial que hay que revisar rápido. Este proyecto busca detectar esos casos, priorizarlos y sugerir qué hacer.
+## 2. Qué hace hoy
 
-## 3. Qué hace hoy
+Hoy el proyecto ya incluye:
 
-El POC actual ya hace esto:
-
-- guarda catálogo, canales, listings, precios, costos y promos en SQLite
-- corre reglas determinísticas para detectar anomalías
-- crea alertas con severidad, impacto estimado y `priority_score`
-- explica por qué una alerta es prioritaria con desglose transparente
-- expone todo por API
-- simula acciones operativas:
-  - bloquear SKU/publicación
+- backend en Python/FastAPI para detección de alertas
+- modelo SQLite con productos, listings, precios, costos, promociones y alertas
+- motor de reglas determinístico para:
+  - margen roto
+  - promo que rompe margen
+  - inconsistencia de precio entre canales
+- scoring de prioridad con:
+  - `estimated_loss`
+  - `priority_score`
+  - breakdown por pérdida, margen negativo y volumen
+- acciones simuladas:
+  - bloquear SKU
+  - bloquear publicación
   - marcar revisión
-  - alertar
+- frontend en React/Vite/Tailwind con dashboard único
 
-Lo importante: la lógica de detección no depende de un modelo. Es explícita y trazable.
+Importante: la detección no depende de LLM. La lógica es explícita, trazable y hoy corre con datos mock.
 
-## 4. Demo mental
+## 3. Flujo demo
 
-Piensa en un ecommerce manager entrando a un panel.
+El flujo demo actual es este:
 
-Vería algo como esto:
+1. levantas el backend
+2. levantas el frontend
+3. abres el dashboard en el navegador
+4. haces click en `Cargar demo`
+5. el frontend llama a `POST /simulate-run`
+6. aparecen alertas reales en la inbox
+7. seleccionas una alerta para ver detalle, score y timeline
+8. pruebas acciones como `Bloquear SKU`, `Bloquear publicación` o `Marcar revisión`
 
-- alerta crítica para `SKU-RUN-001` en Mercado Libre Chile
-- el sistema dice que el margen está roto
-- muestra pérdida estimada: `55.542,70 CLP`
-- muestra prioridad: `77.86`
-- sugiere: `bloquear publicación`
+En menos de 10 segundos ya se entiende el valor del sistema:
 
-Luego entra al detalle y ve:
+- qué SKU está mal
+- en qué canal
+- cuánta pérdida potencial tiene
+- qué tan prioritaria es
+- qué acción conviene ejecutar
 
-- costo
-- precio final
-- margen calculada
-- explicación simple del problema
-- desglose del `priority_score`
-- acciones disponibles
+## 4. Arquitectura simple
 
-Si intenta bloquear, el sistema puede exigir aprobación antes de ejecutar la simulación.
+Sin tecnicismos innecesarios, hoy el sistema tiene estas piezas:
 
-## 5. Arquitectura simple
+### Backend
 
-Sin tecnicismos innecesarios, el sistema tiene 4 piezas:
+- Python + FastAPI
+- expone endpoints para alertas, detalle, simulación y acciones
 
-1. Datos mock
-   Guarda productos, canales, listings, precios, costos, promociones y alertas en SQLite.
+### Base de datos
 
-2. Motor de detección
-   Revisa reglas simples de negocio:
-   - margen roto
-   - promo que rompe margen
-   - inconsistencia de precio entre canales
+- SQLite
+- guarda catálogo, listings, precios, costos, promociones, alertas y action runs
 
-3. Priorización
-   Cada alerta obtiene:
-   - `estimated_loss`
-   - `impact_score`
-   - `priority_score`
-   - desglose del score por pérdida, margen y volumen
+### Runtime
 
-4. API
-   Expone alertas y acciones para que un frontend pueda consumirlas.
-
-Flujo real:
+- usa el starter kit existente de `runtime`, `tools`, `sessions` y `policy`
+- corre el flujo:
 
 ```text
-datos mock -> detección -> alerta -> prioridad -> acción sugerida -> acción simulada
+datos mock -> detección -> alerta -> scoring -> acción sugerida -> acción simulada
 ```
 
-## 6. Cómo correrlo paso a paso
+### Frontend
 
-Desde la raíz del repo.
+- React + Vite + Tailwind + TypeScript
+- dashboard único tipo cockpit
+- consume el backend por API
 
-### Opción recomendada: crear entorno limpio
+## 5. Cómo correrlo paso a paso
+
+Todo se corre desde la raíz del repo.
+
+### Backend
+
+#### 1. Crear entorno e instalar dependencias
 
 ```bash
 python3 -m venv .venv
@@ -88,70 +92,77 @@ python3 -m venv .venv
 .venv/bin/pip install -e .
 ```
 
-### Levantar la API
+#### 2. Levantar la API
 
 ```bash
-PYTHONPATH=src .venv/bin/uvicorn marketplace_guard.api:app --reload
+PYTHONPATH=src .venv/bin/uvicorn marketplace_guard.api:app --host 127.0.0.1 --port 8000
 ```
 
 La API queda disponible en:
 
 - `http://127.0.0.1:8000`
-- docs automáticas: `http://127.0.0.1:8000/docs`
+- docs: `http://127.0.0.1:8000/docs`
 
-### Probar una corrida completa del POC
+### Frontend
 
-Esto ejecuta una simulación y te muestra alertas reales del sistema:
-
-```bash
-PYTHONPATH=src .venv/bin/python examples/run_marketplace_guard.py
-```
-
-### Correr tests
+#### 1. Instalar dependencias
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m unittest tests.test_marketplace_guard
+cd frontend
+npm install
 ```
 
-## 7. Endpoints disponibles
+#### 2. Levantar el dashboard
 
-### `GET /health`
+```bash
+npm run dev -- --host 127.0.0.1 --port 5173
+```
 
-Confirma que la API levantó.
+Abrir en el navegador:
 
-### `GET /products`
+- `http://127.0.0.1:5173`
 
-Lista productos del catálogo mock.
+El frontend usa proxy a `/api`, así que por defecto espera el backend local en `127.0.0.1:8000`.
+
+### Demo rápida completa
+
+Si ya tienes backend y frontend arriba:
+
+1. abre `http://127.0.0.1:5173`
+2. haz click en `Cargar demo`
+3. selecciona una alerta
+4. prueba una acción
+
+## 6. Endpoints principales
 
 ### `GET /alerts`
 
-Devuelve las alertas actuales, ordenables por `priority_score`.
+Lista las alertas actuales, ordenadas por `priority_score`.
 
 ### `GET /alerts/{id}`
 
 Devuelve el detalle de una alerta:
 
-- datos del alert
+- datos de la alerta
 - pricing si aplica
 - timeline
 - acciones ejecutadas
 
 ### `POST /simulate-run`
 
-Dispara una corrida de detección sobre los datos mock y crea/refresca alertas.
+Dispara una corrida de detección con los datos mock y crea o actualiza alertas.
 
 Body mínimo:
 
 ```json
 {
-  "session_id": "demo-run",
   "requested_by": "demo-user"
 }
 ```
 
 ### `POST /alerts/{id}/actions`
 
-Ejecuta una acción sobre una alerta.
+Ejecuta una acción simulada sobre una alerta.
 
 Ejemplos:
 
@@ -171,9 +182,47 @@ Ejemplos:
 }
 ```
 
-## 8. Ejemplo de respuesta real
+## 7. Qué muestra el frontend
 
-Ejemplo real del sistema hoy para una alerta de margen roto:
+El frontend actual es un dashboard único con 3 zonas:
+
+### Inbox
+
+Lista de alertas ordenada por `priority_score desc`, mostrando:
+
+- SKU
+- canal
+- tipo de alerta
+- `estimated_loss`
+- `currency`
+- `priority_score`
+- acción sugerida
+
+### Detail
+
+Panel central con:
+
+- SKU
+- canal / publicación
+- costo
+- precio
+- margen
+- `estimated_loss`
+- `currency`
+- breakdown del `priority_score`
+- explicación del problema
+
+### Action Panel y Timeline
+
+A la derecha:
+
+- botones de acción
+- approval cuando aplica
+- timeline de eventos de la alerta
+
+## 8. Ejemplo real de alerta
+
+Ejemplo real del sistema hoy, después de correr `Cargar demo`:
 
 ```json
 {
@@ -181,8 +230,12 @@ Ejemplo real del sistema hoy para una alerta de margen roto:
   "alert_type": "broken_margin",
   "severity": "critical",
   "status": "open",
+  "product_id": 1,
+  "listing_id": 101,
   "currency": "CLP",
   "sku": "SKU-RUN-001",
+  "product_name": "Nike Pegasus 40 Black 42",
+  "channel_code": "ml_cl",
   "channel_name": "Mercado Libre Chile",
   "title": "Margen roto en SKU-RUN-001 / ml_cl",
   "explanation": "El listing SKU-RUN-001 en ml_cl queda con margen -4958.5 CLP y un gap de 8958.5 CLP contra el margen mínimo requerido.",
@@ -199,61 +252,64 @@ Ejemplo real del sistema hoy para una alerta de margen roto:
 Qué significa:
 
 - `estimated_loss`: pérdida potencial estimada en dinero
-- `priority_score`: prioridad operativa total
-- `estimated_loss_component`: cuánto pesa la pérdida en la prioridad
-- `negative_margin_component`: cuánto pesa la margen negativa
-- `volume_component`: cuánto pesa el volumen de ventas
+- `currency`: moneda del cálculo
+- `priority_score`: prioridad total de la alerta
+- `estimated_loss_component`: peso de la pérdida en la prioridad
+- `negative_margin_component`: peso del margen negativo
+- `volume_component`: peso del volumen
 
-## 9. Qué NO es
+## 9. Limitaciones actuales
 
-Esto no es:
+Hoy el proyecto todavía tiene estas limitaciones:
 
-- un sistema productivo
-- una integración real con marketplaces
-- un motor de pricing automático
-- un sistema con autenticación o multiusuario
-- una herramienta con acciones reales sobre catálogos externos
+- las acciones son simuladas, no pegan a marketplaces reales
+- `bloquear SKU` y `bloquear publicación` comparten el mismo endpoint backend
+- falta `publication_id` nativo en el detail; hoy la UI cae a `listing_id` o `N/A`
+- los datos siguen siendo mock
+- no hay autenticación
+- la UI es funcional y limpia, pero no está pulida como producto final
 
-También es importante esto:
+También es importante:
 
-- los datos son mock
-- las acciones son simuladas
-- no hay frontend final todavía
-- no hay observabilidad ni hardening de producción
+- no es un sistema de producción
+- no hay integraciones reales
+- no hay observabilidad ni hardening
 
 ## 10. Próximos pasos
 
-Los dos pasos obvios desde acá son:
+Los siguientes pasos razonables son:
 
-### Frontend mínimo
+- refinamiento visual del dashboard
+- distinguir en backend `bloquear SKU` vs `bloquear publicación`
+- agregar capa copilot/LLM para explicar cada alerta en lenguaje simple
+- correr la demo con datos más cercanos a operación real
 
-Construir una UI simple tipo cockpit operativo para mostrar:
+Importante para la capa copilot:
 
-- inbox de alertas
-- detalle
-- action panel
-- timeline
-
-### Copilot
-
-Agregar una capa de explicación en lenguaje simple para cada alerta.
-
-Importante:
-
-- el copilot no detecta anomalías
+- no detecta anomalías
 - no reemplaza reglas
-- solo explica el problema, el impacto y la acción sugerida
+- solo explica problema, impacto y acción sugerida
 
 ---
 
-Si solo quieres validar que el proyecto funciona, estos 2 comandos son suficientes:
+Si quieres validar el proyecto rápido, estos son los dos procesos mínimos:
+
+Terminal 1:
 
 ```bash
-PYTHONPATH=src .venv/bin/uvicorn marketplace_guard.api:app --reload
+PYTHONPATH=src .venv/bin/uvicorn marketplace_guard.api:app --host 127.0.0.1 --port 8000
 ```
 
-En otra terminal:
+Terminal 2:
 
 ```bash
-PYTHONPATH=src .venv/bin/python examples/run_marketplace_guard.py
+cd frontend
+npm install
+npm run dev -- --host 127.0.0.1 --port 5173
 ```
+
+Después abre:
+
+- [http://127.0.0.1:5173](http://127.0.0.1:5173)
+
+y usa `Cargar demo`.

@@ -4,6 +4,9 @@ __pycache__/
 *.egg-info/
 .DS_Store
 .env
+node_modules/
+dist/
+.vite/
 
 # Runtime outputs
 .marketplace_guard/
